@@ -1,0 +1,8 @@
+[package]
+name = "datafusion-loki"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+datafusion = { version = "49" }
+async-trait = "0.1"
