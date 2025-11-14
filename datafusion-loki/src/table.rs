@@ -95,7 +95,17 @@ impl TableProvider for LokiLogTable {
             }
         }
 
-        let log_query = format!("{} {}", label_filters.join(", "), line_filters.join(" "));
+        if label_filters.is_empty() {
+            return Err(DataFusionError::Execution(format!(
+                "No label filters provided"
+            )));
+        }
+
+        let log_query = format!(
+            "{{{}}} {}",
+            label_filters.join(", "),
+            line_filters.join(" ")
+        );
         println!("LWZTEST query: {log_query}, start: {start:?}, end: {end:?}");
         let exec = LokiLogScanExec::try_new(
             self.endpoint.clone(),

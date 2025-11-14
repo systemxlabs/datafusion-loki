@@ -2,7 +2,7 @@ use std::{any::Any, io::Cursor, pin::Pin, sync::Arc};
 
 use datafusion::{
     arrow::array::RecordBatch,
-    common::{Statistics, project_schema},
+    common::project_schema,
     error::DataFusionError,
     execution::{SendableRecordBatchStream, TaskContext},
     physical_expr::EquivalenceProperties,
@@ -124,11 +124,6 @@ impl ExecutionPlan for LokiLogScanExec {
         )))
     }
 
-    // TODO impl
-    // fn partition_statistics(&self, partition: Option<usize>) -> DFResult<Statistics> {
-    //     todo!()
-    // }
-
     fn with_fetch(&self, limit: Option<usize>) -> Option<Arc<dyn ExecutionPlan>> {
         Self::try_new(
             self.endpoint.clone(),
@@ -183,10 +178,14 @@ async fn fetch_log_stream(
         .send()
         .await
         .map_err(|e| DataFusionError::Execution(format!("Failed to send request to loki: {e}")))?;
-    if !resp.status().is_success() {
+    let status = resp.status();
+    if !status.is_success() {
+        let url = resp.url().clone();
+        let text = resp.text().await;
+        println!("LWZTEST resp text: {text:?}");
         return Err(DataFusionError::Execution(format!(
-            "Request to logi failed with status {}",
-            resp.status()
+            "Request to logi failed with status {}, url: {}",
+            status, url
         )));
     }
     let bytes = resp.bytes().await.map_err(|e| {
