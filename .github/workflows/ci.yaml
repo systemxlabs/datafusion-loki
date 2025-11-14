@@ -25,7 +25,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Run integration tests
-        run: cargo test -p integration_tests
+        run: cargo test -p integration-tests
 
   lints:
     name: Lints
