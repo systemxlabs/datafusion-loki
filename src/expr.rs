@@ -1,80 +1,46 @@
+use std::sync::LazyLock;
+
 use datafusion::{
-    logical_expr::{BinaryExpr, Like, Operator},
+    logical_expr::{BinaryExpr, Like, Operator, ScalarUDFImpl, expr::ScalarFunction},
     prelude::Expr,
     scalar::ScalarValue,
 };
 
-use crate::{LINE_FIELD_REF, TIMESTAMP_FIELD_REF};
+use crate::{LABELS_FIELD_REF, LINE_FIELD_REF, MapGet, TIMESTAMP_FIELD_REF};
 
-// TODO whether this can be simplified
-pub fn expr_to_label_filter(expr: &Expr, labels: &[String]) -> Option<String> {
-    let cols = expr.column_refs();
-    if cols.len() != 1 {
-        return None;
-    }
-    let Some(col) = cols.iter().next() else {
-        return None;
-    };
-    if !labels.contains(&col.name) {
-        return None;
-    }
+static MAP_GET_FUNC: LazyLock<MapGet> = LazyLock::new(|| MapGet::new());
 
-    let empty_string = String::new();
-
+pub fn expr_to_label_filter(expr: &Expr) -> Option<String> {
     if let Expr::BinaryExpr(BinaryExpr { left, op, right }) = expr {
+        let Expr::ScalarFunction(ScalarFunction { func, args }) = left.as_ref() else {
+            return None;
+        };
+        if func.name() != MAP_GET_FUNC.name() {
+            return None;
+        }
+        if args.len() != 2 {
+            return None;
+        }
+        let label = match (&args[0], &args[1]) {
+            (Expr::Column(col), Expr::Literal(ScalarValue::Utf8(value), _))
+                if col.name() == LABELS_FIELD_REF.name() =>
+            {
+                value.as_ref()
+            }
+            _ => None,
+        }?;
+
+        let Expr::Literal(ScalarValue::Utf8(value), _) = right.as_ref() else {
+            return None;
+        };
+        let empty_string = String::new();
+        let value = value.as_ref().unwrap_or(&empty_string);
+
         match op {
-            Operator::Eq => match (left.as_ref(), right.as_ref()) {
-                (Expr::Column(_), Expr::Literal(ScalarValue::Utf8(value), _)) => Some(format!(
-                    "{}=\"{}\"",
-                    col.name,
-                    value.as_ref().unwrap_or(&empty_string)
-                )),
-                (Expr::Literal(ScalarValue::Utf8(value), _), Expr::Column(_)) => Some(format!(
-                    "{}=\"{}\"",
-                    col.name,
-                    value.as_ref().unwrap_or(&empty_string)
-                )),
-                _ => None,
-            },
-            Operator::NotEq => match (left.as_ref(), right.as_ref()) {
-                (Expr::Column(_), Expr::Literal(ScalarValue::Utf8(value), _)) => Some(format!(
-                    "{}!=\"{}\"",
-                    col.name,
-                    value.as_ref().unwrap_or(&empty_string)
-                )),
-                (Expr::Literal(ScalarValue::Utf8(value), _), Expr::Column(_)) => Some(format!(
-                    "{}!=\"{}\"",
-                    col.name,
-                    value.as_ref().unwrap_or(&empty_string)
-                )),
-                _ => None,
-            },
-            Operator::RegexMatch => match (left.as_ref(), right.as_ref()) {
-                (Expr::Column(_), Expr::Literal(ScalarValue::Utf8(value), _)) => Some(format!(
-                    "{}=~\"{}\"",
-                    col.name,
-                    value.as_ref().unwrap_or(&empty_string)
-                )),
-                (Expr::Literal(ScalarValue::Utf8(value), _), Expr::Column(_)) => Some(format!(
-                    "{}=~\"{}\"",
-                    col.name,
-                    value.as_ref().unwrap_or(&empty_string)
-                )),
-                _ => None,
-            },
-            Operator::RegexNotMatch => match (left.as_ref(), right.as_ref()) {
-                (Expr::Column(_), Expr::Literal(ScalarValue::Utf8(value), _)) => Some(format!(
-                    "{}!~\"{}\"",
-                    col.name,
-                    value.as_ref().unwrap_or(&empty_string)
-                )),
-                (Expr::Literal(ScalarValue::Utf8(value), _), Expr::Column(_)) => Some(format!(
-                    "{}!~\"{}\"",
-                    col.name,
-                    value.as_ref().unwrap_or(&empty_string)
-                )),
-                _ => None,
-            },
+            Operator::Eq => Some(format!("{label}=\"{value}\"")),
+            Operator::NotEq => Some(format!("{label}!=\"{value}\"")),
+            Operator::RegexMatch => Some(format!("{label}=~\"{value}\"")),
+            Operator::RegexNotMatch => Some(format!("{label}!~\"{value}\"")),
             _ => None,
         }
     } else {

@@ -1,6 +1,7 @@
 use std::{any::Any, sync::Arc};
 
 use datafusion::{
+    arrow::datatypes::Schema,
     common::{Statistics, project_schema},
     error::DataFusionError,
     execution::{SendableRecordBatchStream, TaskContext},
@@ -12,12 +13,11 @@ use datafusion::{
     },
 };
 
-use crate::{DFResult, make_table_schema};
+use crate::{DFResult, LABELS_FIELD_REF, LINE_FIELD_REF, TIMESTAMP_FIELD_REF};
 
 #[derive(Debug)]
 pub struct LokiLogScanExec {
     pub endpoint: String,
-    pub labels: Vec<String>,
     pub log_query: String,
     pub start: Option<i64>,
     pub end: Option<i64>,
@@ -29,14 +29,17 @@ pub struct LokiLogScanExec {
 impl LokiLogScanExec {
     pub fn try_new(
         endpoint: String,
-        labels: Vec<String>,
         log_query: String,
         start: Option<i64>,
         end: Option<i64>,
         projection: Option<Vec<usize>>,
         limit: Option<usize>,
     ) -> DFResult<Self> {
-        let schema = make_table_schema(&labels);
+        let schema = Arc::new(Schema::new(vec![
+            TIMESTAMP_FIELD_REF.clone(),
+            LABELS_FIELD_REF.clone(),
+            LINE_FIELD_REF.clone(),
+        ]));
         let projected_schema = project_schema(&schema, projection.as_ref())?;
         let plan_properties = PlanProperties::new(
             EquivalenceProperties::new(projected_schema),
@@ -46,7 +49,6 @@ impl LokiLogScanExec {
         );
         Ok(LokiLogScanExec {
             endpoint,
-            labels,
             log_query,
             start,
             end,
@@ -94,14 +96,14 @@ impl ExecutionPlan for LokiLogScanExec {
         todo!()
     }
 
-    fn partition_statistics(&self, partition: Option<usize>) -> DFResult<Statistics> {
-        todo!()
-    }
+    // TODO impl
+    // fn partition_statistics(&self, partition: Option<usize>) -> DFResult<Statistics> {
+    //     todo!()
+    // }
 
     fn with_fetch(&self, limit: Option<usize>) -> Option<Arc<dyn ExecutionPlan>> {
         Self::try_new(
             self.endpoint.clone(),
-            self.labels.clone(),
             self.log_query.clone(),
             self.start,
             self.end,

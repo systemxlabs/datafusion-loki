@@ -15,13 +15,6 @@ use crate::{
     parse_timestamp_bound,
 };
 
-#[derive(Debug)]
-pub struct LokiLogTable {
-    pub endpoint: String,
-    pub labels: Vec<String>,
-    pub schema: SchemaRef,
-}
-
 pub static TIMESTAMP_FIELD_REF: LazyLock<FieldRef> = LazyLock::new(|| {
     Arc::new(Field::new(
         "timestamp",
@@ -31,41 +24,31 @@ pub static TIMESTAMP_FIELD_REF: LazyLock<FieldRef> = LazyLock::new(|| {
 });
 pub static LABELS_FIELD_REF: LazyLock<FieldRef> = LazyLock::new(|| {
     let key_field = Field::new("keys", DataType::Utf8, false);
-    let value_field = Field::new("values", DataType::Int32, true); // 值允许为空
+    let value_field = Field::new("values", DataType::Utf8, true); // 值允许为空
     let entry_struct = DataType::Struct(vec![key_field, value_field].into());
-    let map_field = Arc::new(Field::new("map_entries", entry_struct, false));
+    let map_field = Arc::new(Field::new("entries", entry_struct, false));
     Arc::new(Field::new("labels", DataType::Map(map_field, false), true))
 });
 pub static LINE_FIELD_REF: LazyLock<FieldRef> =
     LazyLock::new(|| Arc::new(Field::new("line", DataType::Utf8, true)));
 
-pub fn make_table_schema(labels: &[String]) -> SchemaRef {
-    let mut fields = vec![TIMESTAMP_FIELD_REF.clone()];
-    for label in labels.iter() {
-        fields.push(Arc::new(Field::new(label, DataType::Utf8, true)));
-    }
-    fields.push(LINE_FIELD_REF.clone());
-
-    Arc::new(Schema::new(fields))
+#[derive(Debug)]
+pub struct LokiLogTable {
+    pub endpoint: String,
+    pub schema: SchemaRef,
 }
 
 impl LokiLogTable {
-    pub fn try_new(endpoint: String, labels: Vec<String>) -> DFResult<Self> {
-        if labels.contains(TIMESTAMP_FIELD_REF.name()) || labels.contains(LINE_FIELD_REF.name()) {
-            return Err(DataFusionError::Plan(format!(
-                "Labels should not contains {} or {}",
-                TIMESTAMP_FIELD_REF.name(),
-                LINE_FIELD_REF.name()
-            )));
-        }
+    pub fn try_new(endpoint: impl Into<String>) -> DFResult<Self> {
+        let endpoint = endpoint.into();
 
-        let schema = make_table_schema(&labels);
+        let schema = Arc::new(Schema::new(vec![
+            TIMESTAMP_FIELD_REF.clone(),
+            LABELS_FIELD_REF.clone(),
+            LINE_FIELD_REF.clone(),
+        ]));
 
-        Ok(LokiLogTable {
-            endpoint,
-            labels,
-            schema,
-        })
+        Ok(LokiLogTable { endpoint, schema })
     }
 }
 
@@ -95,7 +78,7 @@ impl TableProvider for LokiLogTable {
         let mut start = None;
         let mut end = None;
         for filter in filters {
-            if let Some(label_filter) = expr_to_label_filter(filter, &self.labels) {
+            if let Some(label_filter) = expr_to_label_filter(filter) {
                 label_filters.push(label_filter);
             } else if let Some(line_filter) = expr_to_line_filter(filter) {
                 line_filters.push(line_filter);
@@ -112,9 +95,9 @@ impl TableProvider for LokiLogTable {
         }
 
         let log_query = format!("{} {}", label_filters.join(", "), line_filters.join(" "));
+        println!("LWZTEST query: {log_query}, start: {start:?}, end: {end:?}");
         let exec = LokiLogScanExec::try_new(
             self.endpoint.clone(),
-            self.labels.clone(),
             log_query,
             start,
             end,
@@ -130,7 +113,7 @@ impl TableProvider for LokiLogTable {
     ) -> DFResult<Vec<TableProviderFilterPushDown>> {
         let mut pushdown = Vec::with_capacity(filters.len());
         for filter in filters {
-            if expr_to_label_filter(filter, &self.labels).is_some()
+            if expr_to_label_filter(filter).is_some()
                 || expr_to_line_filter(filter).is_some()
                 || parse_timestamp_bound(filter).is_some()
             {
