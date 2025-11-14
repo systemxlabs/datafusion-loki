@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+datafusion = { workspace = true }
+datafusion-loki = { path = "../datafusion-loki" }
+tokio = { workspace = true }

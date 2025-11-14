@@ -5,9 +5,9 @@ edition = "2024"
 
 [dependencies]
 async-trait = "0.1"
-datafusion = { version = "49" }
+datafusion = { workspace = true }
 futures = "0.3"
 parquet = { version = "55", features = ["async"] }
 reqwest = { version = "0.12", features = ["stream"] }
 # TODO remove this
-tokio = { version = "1", features = ["full"] }
+tokio = { workspace = true, features = ["full"] }

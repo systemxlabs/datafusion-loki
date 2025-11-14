@@ -8,7 +8,7 @@ use datafusion::{
 
 use crate::{LABELS_FIELD_REF, LINE_FIELD_REF, MapGet, TIMESTAMP_FIELD_REF};
 
-static MAP_GET_FUNC: LazyLock<MapGet> = LazyLock::new(|| MapGet::new());
+static MAP_GET_FUNC: LazyLock<MapGet> = LazyLock::new(MapGet::new);
 
 pub fn expr_to_label_filter(expr: &Expr) -> Option<String> {
     if let Expr::BinaryExpr(BinaryExpr { left, op, right }) = expr {
@@ -53,9 +53,7 @@ pub fn expr_to_line_filter(expr: &Expr) -> Option<String> {
     if cols.len() != 1 {
         return None;
     }
-    let Some(col) = cols.iter().next() else {
-        return None;
-    };
+    let col = cols.iter().next()?;
     if col.name() != LINE_FIELD_REF.name() {
         return None;
     }
@@ -100,6 +98,7 @@ pub fn expr_to_line_filter(expr: &Expr) -> Option<String> {
         };
         let value = value.as_ref().unwrap_or(&empty_string);
         if value.starts_with("%") && value.ends_with("%") && !value.contains("_") {
+            let value = value.trim_start_matches('%').trim_end_matches('%');
             match (negated, case_insensitive) {
                 (true, true) => Some(format!("!~ `(?i){}`", value)),
                 (true, false) => Some(format!("!= `{}`", value)),
@@ -123,9 +122,7 @@ pub fn parse_timestamp_bound(expr: &Expr) -> Option<TimestampBound> {
     if cols.len() != 1 {
         return None;
     }
-    let Some(col) = cols.iter().next() else {
-        return None;
-    };
+    let col = cols.iter().next()?;
     if col.name() != TIMESTAMP_FIELD_REF.name() {
         return None;
     }

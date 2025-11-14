@@ -3,8 +3,8 @@ use std::sync::{Arc, LazyLock};
 use datafusion::{
     arrow::datatypes::{DataType, Field, FieldRef, Schema, SchemaRef, TimeUnit},
     catalog::{Session, TableProvider},
+    common::exec_err,
     datasource::TableType,
-    error::DataFusionError,
     logical_expr::TableProviderFilterPushDown,
     physical_plan::ExecutionPlan,
     prelude::Expr,
@@ -89,16 +89,12 @@ impl TableProvider for LokiLogTable {
                     TimestampBound::End(v) => end = v,
                 }
             } else {
-                return Err(DataFusionError::Execution(format!(
-                    "Unsupported filter: {filter}"
-                )));
+                return exec_err!("Unsupported filter: {filter}");
             }
         }
 
         if label_filters.is_empty() {
-            return Err(DataFusionError::Execution(format!(
-                "No label filters provided"
-            )));
+            return exec_err!("No label filters provided");
         }
 
         let log_query = format!(

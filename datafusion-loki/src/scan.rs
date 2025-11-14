@@ -2,7 +2,7 @@ use std::{any::Any, io::Cursor, pin::Pin, sync::Arc};
 
 use datafusion::{
     arrow::array::RecordBatch,
-    common::project_schema,
+    common::{exec_err, project_schema},
     error::DataFusionError,
     execution::{SendableRecordBatchStream, TaskContext},
     physical_expr::EquivalenceProperties,
@@ -93,9 +93,7 @@ impl ExecutionPlan for LokiLogScanExec {
         _context: Arc<TaskContext>,
     ) -> DFResult<SendableRecordBatchStream> {
         if partition != 0 {
-            return Err(DataFusionError::Execution(format!(
-                "LokiLogScanExec does not support multiple partitions"
-            )));
+            return exec_err!("LokiLogScanExec does not support multiple partitions");
         }
         let mut query = Vec::new();
         if !self.log_query.is_empty() {
