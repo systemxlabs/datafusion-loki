@@ -32,23 +32,24 @@ pub static LABELS_FIELD_REF: LazyLock<FieldRef> = LazyLock::new(|| {
 pub static LINE_FIELD_REF: LazyLock<FieldRef> =
     LazyLock::new(|| Arc::new(Field::new("line", DataType::Utf8, true)));
 
+pub static LOG_TABLE_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
+    Arc::new(Schema::new(vec![
+        TIMESTAMP_FIELD_REF.clone(),
+        LABELS_FIELD_REF.clone(),
+        LINE_FIELD_REF.clone(),
+    ]))
+});
+
 #[derive(Debug)]
 pub struct LokiLogTable {
     pub endpoint: String,
-    pub schema: SchemaRef,
 }
 
 impl LokiLogTable {
     pub fn try_new(endpoint: impl Into<String>) -> DFResult<Self> {
         let endpoint = endpoint.into();
 
-        let schema = Arc::new(Schema::new(vec![
-            TIMESTAMP_FIELD_REF.clone(),
-            LABELS_FIELD_REF.clone(),
-            LINE_FIELD_REF.clone(),
-        ]));
-
-        Ok(LokiLogTable { endpoint, schema })
+        Ok(LokiLogTable { endpoint })
     }
 }
 
@@ -59,7 +60,7 @@ impl TableProvider for LokiLogTable {
     }
 
     fn schema(&self) -> SchemaRef {
-        self.schema.clone()
+        LOG_TABLE_SCHEMA.clone()
     }
 
     fn table_type(&self) -> TableType {

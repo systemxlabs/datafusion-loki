@@ -1,7 +1,7 @@
-use std::{any::Any, sync::Arc};
+use std::{any::Any, io::Cursor, pin::Pin, sync::Arc};
 
 use datafusion::{
-    arrow::datatypes::Schema,
+    arrow::array::RecordBatch,
     common::{Statistics, project_schema},
     error::DataFusionError,
     execution::{SendableRecordBatchStream, TaskContext},
@@ -10,10 +10,14 @@ use datafusion::{
         DisplayAs, DisplayFormatType, ExecutionPlan, Partitioning, PlanProperties,
         display::ProjectSchemaDisplay,
         execution_plan::{Boundedness, EmissionType},
+        stream::RecordBatchStreamAdapter,
     },
 };
+use futures::{Stream, StreamExt, TryStreamExt};
+use parquet::arrow::{ParquetRecordBatchStreamBuilder, ProjectionMask};
+use reqwest::{Client, RequestBuilder};
 
-use crate::{DFResult, LABELS_FIELD_REF, LINE_FIELD_REF, TIMESTAMP_FIELD_REF};
+use crate::{DFResult, LOG_TABLE_SCHEMA};
 
 #[derive(Debug)]
 pub struct LokiLogScanExec {
@@ -23,6 +27,7 @@ pub struct LokiLogScanExec {
     pub end: Option<i64>,
     pub projection: Option<Vec<usize>>,
     pub limit: Option<usize>,
+    client: Client,
     plan_properties: PlanProperties,
 }
 
@@ -35,18 +40,16 @@ impl LokiLogScanExec {
         projection: Option<Vec<usize>>,
         limit: Option<usize>,
     ) -> DFResult<Self> {
-        let schema = Arc::new(Schema::new(vec![
-            TIMESTAMP_FIELD_REF.clone(),
-            LABELS_FIELD_REF.clone(),
-            LINE_FIELD_REF.clone(),
-        ]));
-        let projected_schema = project_schema(&schema, projection.as_ref())?;
+        let projected_schema = project_schema(&LOG_TABLE_SCHEMA, projection.as_ref())?;
         let plan_properties = PlanProperties::new(
             EquivalenceProperties::new(projected_schema),
             Partitioning::UnknownPartitioning(1),
             EmissionType::Incremental,
             Boundedness::Bounded,
         );
+        let client = Client::builder()
+            .build()
+            .map_err(|e| DataFusionError::Plan(format!("Failed to build http client: {e}")))?;
         Ok(LokiLogScanExec {
             endpoint,
             log_query,
@@ -54,6 +57,7 @@ impl LokiLogScanExec {
             end,
             projection,
             limit,
+            client,
             plan_properties,
         })
     }
@@ -93,7 +97,31 @@ impl ExecutionPlan for LokiLogScanExec {
                 "LokiLogScanExec does not support multiple partitions"
             )));
         }
-        todo!()
+        let mut query = Vec::new();
+        if !self.log_query.is_empty() {
+            query.push(("query", self.log_query.clone()));
+        }
+        if let Some(start) = self.start {
+            query.push(("start", start.to_string()));
+        }
+        if let Some(end) = self.end {
+            query.push(("end", end.to_string()));
+        }
+        if let Some(limit) = self.limit {
+            query.push(("limit", limit.to_string()));
+        }
+        let req_builder = self
+            .client
+            .get(format!("{}/loki/api/v1/query_range", self.endpoint))
+            .header("Accept", "application/vnd.apache.parquet")
+            .query(&query);
+
+        let fut = fetch_log_stream(req_builder, self.projection.clone());
+        let stream = futures::stream::once(fut).try_flatten();
+        Ok(Box::pin(RecordBatchStreamAdapter::new(
+            self.schema(),
+            stream,
+        )))
     }
 
     // TODO impl
@@ -145,4 +173,41 @@ impl DisplayAs for LokiLogScanExec {
         }
         Ok(())
     }
+}
+
+async fn fetch_log_stream(
+    req_builder: RequestBuilder,
+    projection: Option<Vec<usize>>,
+) -> DFResult<Pin<Box<dyn Stream<Item = DFResult<RecordBatch>> + Send>>> {
+    let resp = req_builder
+        .send()
+        .await
+        .map_err(|e| DataFusionError::Execution(format!("Failed to send request to loki: {e}")))?;
+    if !resp.status().is_success() {
+        return Err(DataFusionError::Execution(format!(
+            "Request to logi failed with status {}",
+            resp.status()
+        )));
+    }
+    let bytes = resp.bytes().await.map_err(|e| {
+        DataFusionError::Execution(format!("Failed to get response body as bytes: {e}"))
+    })?;
+    let cursor = Cursor::new(bytes);
+
+    let builder = ParquetRecordBatchStreamBuilder::new(cursor).await?;
+    let parquet_schema = builder.parquet_schema();
+
+    let projection_mask = match projection {
+        Some(proj) => ProjectionMask::roots(parquet_schema, proj),
+        None => ProjectionMask::all(),
+    };
+
+    let stream = builder
+        .with_batch_size(4096)
+        .with_projection(projection_mask)
+        .build()?
+        .map_err(|e| DataFusionError::ParquetError(Box::new(e)))
+        .boxed();
+
+    Ok(stream)
 }
