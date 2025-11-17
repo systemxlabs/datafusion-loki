@@ -17,7 +17,9 @@ use futures::{Stream, StreamExt, TryStreamExt};
 use parquet::arrow::{ParquetRecordBatchStreamBuilder, ProjectionMask};
 use reqwest::{Client, RequestBuilder};
 
-use crate::{DFResult, LOG_TABLE_SCHEMA};
+use crate::{
+    DFResult, LOG_TABLE_SCHEMA, current_timestamp_ns, thirty_days_before_now_timestamp_ns,
+};
 
 #[derive(Debug)]
 pub struct LokiLogScanExec {
@@ -96,18 +98,18 @@ impl ExecutionPlan for LokiLogScanExec {
             return exec_err!("LokiLogScanExec does not support multiple partitions");
         }
         let mut query = Vec::new();
-        if !self.log_query.is_empty() {
-            query.push(("query", self.log_query.clone()));
-        }
-        if let Some(start) = self.start {
-            query.push(("start", start.to_string()));
-        }
-        if let Some(end) = self.end {
-            query.push(("end", end.to_string()));
-        }
+        query.push(("query", self.log_query.clone()));
+
+        let start = self.start.unwrap_or(thirty_days_before_now_timestamp_ns());
+        query.push(("start", start.to_string()));
+
+        let end = self.end.unwrap_or(current_timestamp_ns());
+        query.push(("end", end.to_string()));
+
         if let Some(limit) = self.limit {
             query.push(("limit", limit.to_string()));
         }
+
         let req_builder = self
             .client
             .get(format!("{}/loki/api/v1/query_range", self.endpoint))
