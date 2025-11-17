@@ -27,6 +27,20 @@ async fn full_table_scan() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test]
+async fn scan_with_projection() -> Result<(), Box<dyn std::error::Error>> {
+    assert_loki_output(
+        "select timestamp, line from loki where map_get(labels, 'app') = 'my-app2'",
+        r#"+-----------------+
+| line            |
++-----------------+
+| this is bbb log |
++-----------------+"#,
+    )
+    .await?;
+    Ok(())
+}
+
+#[tokio::test]
 async fn timestamp_filter() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }

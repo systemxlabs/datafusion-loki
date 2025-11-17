@@ -11,12 +11,26 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ctx.register_table("loki", Arc::new(loki_table))?;
     ctx.register_udf(ScalarUDF::new_from_impl(MapGet::new()));
 
-    ctx.sql("insert into loki values (current_timestamp(), Map{'app': 'datafabric-executor-0'}, 'user login failed')").await?.show().await?;
+    ctx.sql(
+        "insert into loki values (current_timestamp(), Map{'app': 'my-app'}, 'user login failed')",
+    )
+    .await?
+    .show()
+    .await?;
 
-    ctx.sql("select * from loki where map_get(labels, 'app') = 'datafabric-executor-0' and timestamp > '2025-11-12T00:00:00Z' limit 2")
-        .await?
-        .show()
-        .await?;
+    ctx.sql(
+        r#"
+select * 
+from loki 
+where map_get(labels, 'app') = 'my-app' 
+    and timestamp > '2025-11-12T00:00:00Z' 
+    and line like '%login%' 
+limit 2
+"#,
+    )
+    .await?
+    .show()
+    .await?;
 
     Ok(())
 }

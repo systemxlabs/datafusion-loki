@@ -2,15 +2,23 @@
 name = "datafusion-loki"
 version = "0.1.0"
 edition = "2024"
+authors = ["lewiszlw <lewiszlw520@gmail.com>"]
+description = "A DataFusion table provider for querying Loki data"
+keywords = ["SQL", "database", "loki", "log"]
+license = "MIT"
+repository = "https://github.com/systemxlabs/datafusion-loki"
+readme = "../README.md"
 
 [dependencies]
 async-trait = "0.1"
 datafusion = { workspace = true }
 datafusion-proto = { workspace = true }
 futures = "0.3"
+log = "0.4"
 parquet = { version = "55", features = ["async"] }
 prost = { workspace = true }
 reqwest = { version = "0.12", features = ["stream", "json"] }
 serde = "1"
-# TODO remove this
+
+[dev-dependencies]
 tokio = { workspace = true, features = ["full"] }

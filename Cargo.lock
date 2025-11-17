@@ -1104,6 +1104,7 @@ dependencies = [
  "datafusion",
  "datafusion-proto",
  "futures",
+ "log",
  "parquet",
  "prost",
  "reqwest",

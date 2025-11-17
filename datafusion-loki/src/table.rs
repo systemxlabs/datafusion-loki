@@ -131,7 +131,6 @@ impl TableProvider for LokiLogTable {
             label_filters.join(", "),
             line_filters.join(" ")
         );
-        println!("LWZTEST query: {log_query}, start: {start:?}, end: {end:?}");
         let exec = LokiLogScanExec::try_new(
             self.endpoint.clone(),
             log_query,

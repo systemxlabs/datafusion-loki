@@ -14,6 +14,7 @@ use datafusion::{
     },
 };
 use futures::{Stream, StreamExt, TryStreamExt};
+use log::debug;
 use parquet::arrow::{ParquetRecordBatchStreamBuilder, ProjectionMask};
 use reqwest::{Client, RequestBuilder};
 
@@ -97,6 +98,12 @@ impl ExecutionPlan for LokiLogScanExec {
         if partition != 0 {
             return exec_err!("LokiLogScanExec does not support multiple partitions");
         }
+
+        debug!(
+            "[datafusion-loki] starting to scan logs: query: {}, start: {:?}, end: {:?}, limit: {:?}",
+            self.log_query, self.start, self.end, self.limit
+        );
+
         let mut query = Vec::new();
         query.push(("query", self.log_query.clone()));
 
