@@ -1,0 +1,1 @@
+INSERT INTO loki values (current_timestamp(), Map{'app': 'my-app'}, 'this is a test log');

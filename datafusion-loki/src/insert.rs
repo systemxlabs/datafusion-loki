@@ -150,7 +150,7 @@ async fn push_logs(endpoint: &str, client: &Client, batch: &RecordBatch) -> DFRe
         .send()
         .await
         .map_err(|e| {
-            DataFusionError::Execution(format!("Failed to send push request to loki: {e}"))
+            DataFusionError::Execution(format!("Failed to send push request to loki: {e:?}"))
         })?;
     let status = resp.status();
     if !status.is_success() {

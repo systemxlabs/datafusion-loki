@@ -4,6 +4,8 @@ use datafusion::{
     prelude::SessionContext,
 };
 
+use crate::{build_session_context, setup_loki};
+
 pub async fn assert_sql_output(
     ctx: &SessionContext,
     sql: &str,
@@ -22,4 +24,13 @@ pub async fn assert_sql_output(
 
     assert_eq!(output, expected_output);
     Ok(())
+}
+
+pub async fn assert_sql(
+    sql: &str,
+    expected_output: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    setup_loki().await;
+    let ctx = build_session_context();
+    assert_sql_output(&ctx, sql, expected_output).await
 }

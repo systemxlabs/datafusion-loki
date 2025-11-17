@@ -5,6 +5,7 @@ use datafusion::{
     catalog::{Session, TableProvider},
     common::exec_err,
     datasource::TableType,
+    error::DataFusionError,
     logical_expr::{TableProviderFilterPushDown, dml::InsertOp},
     physical_plan::ExecutionPlan,
     prelude::Expr,
@@ -43,13 +44,37 @@ pub static LOG_TABLE_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
 #[derive(Debug)]
 pub struct LokiLogTable {
     pub endpoint: String,
+    pub default_label: Option<String>,
 }
 
 impl LokiLogTable {
     pub fn try_new(endpoint: impl Into<String>) -> DFResult<Self> {
         let endpoint = endpoint.into();
 
-        Ok(LokiLogTable { endpoint })
+        Ok(LokiLogTable {
+            endpoint,
+            default_label: None,
+        })
+    }
+
+    pub fn with_default_label(mut self, default_label: Option<String>) -> Self {
+        self.default_label = default_label;
+        self
+    }
+
+    pub async fn check_connection(&self) -> DFResult<()> {
+        let client = reqwest::Client::new();
+        let resp = client
+            .get(format!("{}/loki/api/v1/status/buildinfo", self.endpoint))
+            .send()
+            .await
+            .map_err(|e| DataFusionError::External(Box::new(e)))?;
+
+        if resp.status().is_success() {
+            Ok(())
+        } else {
+            exec_err!("Failed to connect to loki with status {}", resp.status())
+        }
     }
 }
 
@@ -94,7 +119,11 @@ impl TableProvider for LokiLogTable {
         }
 
         if label_filters.is_empty() {
-            return exec_err!("No label filters provided");
+            if let Some(default_label) = &self.default_label {
+                label_filters.push(format!("{default_label}=~\".+\""));
+            } else {
+                return exec_err!("No label filters or default label provided");
+            }
         }
 
         let log_query = format!(
