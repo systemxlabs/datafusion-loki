@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package datafusion_loki;
+
+import "datafusion_common.proto";
+import "datafusion.proto";
+
+message LokiPhysicalPlanNode {
+  oneof LokiPhysicalPlanType {
+    LokiLogScanExec scan = 1;
+    LokiLogInsertExec insert = 2;
+    MemoryDatasourceNode memory_datasource = 3;
+  }
+}
+
+message LokiLogScanExec {
+    string endpoint = 1;
+    string log_query = 2;
+    optional int64 start = 3;
+    optional int64 end = 4;
+    Projection projection = 5;
+    optional int32 limit = 6;
+}
+
+message LokiLogInsertExec {
+    string endpoint = 1;
+}
+
+message MemoryDatasourceNode {
+  repeated bytes partitions = 1;
+  datafusion_common.Schema schema = 2;
+  Projection projection = 3;
+  repeated datafusion.PhysicalSortExprNodeCollection sort_information = 4;  
+  bool show_sizes = 5;
+  optional uint32 fetch = 6;
+}
+
+message Projection {
+  repeated uint32 projection = 1;
+}

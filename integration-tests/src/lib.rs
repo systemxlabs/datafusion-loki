@@ -20,31 +20,14 @@ pub async fn setup_loki() {
             DockerCompose::new("loki", format!("{}/testdata", env!("CARGO_MANIFEST_DIR")));
         compose.down();
         compose.up();
+        std::thread::sleep(std::time::Duration::from_secs(20));
         compose
     });
     let _ = LOKI_INIT
         .get_or_init(async || {
-            wait_container_ready().await;
             init_loki().await;
         })
         .await;
-}
-
-async fn wait_container_ready() {
-    let table = build_loki_table();
-
-    let mut retry = 0;
-    loop {
-        match table.check_connection().await {
-            Ok(_) => break,
-            Err(e) => eprintln!("Connection error: {e}"),
-        }
-        retry += 1;
-        if retry > 20 {
-            panic!("container still not ready after 200 seconds");
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-    }
 }
 
 pub async fn init_loki() {

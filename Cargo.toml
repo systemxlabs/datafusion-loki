@@ -1,7 +1,10 @@
 [workspace]
-members = ["datafusion-loki", "integration-tests"]
+members = ["datafusion-loki", "datafusion-loki/gen", "integration-tests"]
 resolver = "3"
 
 [workspace.dependencies]
 datafusion = "49"
+datafusion-proto = "49"
+prost = "0.13"
+prost-build = "0.13"
 tokio = "1"

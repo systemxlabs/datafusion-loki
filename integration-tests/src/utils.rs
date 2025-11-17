@@ -92,7 +92,7 @@ pub fn sort_record_batches(batches: &[RecordBatch], sort_col: &str) -> DFResult<
     Ok(vec![batch])
 }
 
-fn sort_batch_map_field(batches: Vec<RecordBatch>) -> Vec<RecordBatch> {
+pub fn sort_batch_map_field(batches: Vec<RecordBatch>) -> Vec<RecordBatch> {
     let mut sorted_batches = Vec::with_capacity(batches.len());
     for batch in batches {
         let mut sorted_arrays = Vec::with_capacity(batch.num_columns());

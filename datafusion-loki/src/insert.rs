@@ -128,7 +128,7 @@ impl DisplayAs for LokiLogInsertExec {
         if let Ok(stats) = self.input.partition_statistics(None) {
             match stats.num_rows {
                 Precision::Exact(rows) => write!(f, ", rows={rows}")?,
-                Precision::Inexact(rows) => write!(f, ", rows~={rows}")?,
+                Precision::Inexact(rows) => write!(f, ", rows≈{rows}")?,
                 Precision::Absent => {}
             }
         }
