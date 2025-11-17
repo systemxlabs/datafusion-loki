@@ -5,14 +5,14 @@ use datafusion::{
     catalog::{Session, TableProvider},
     common::exec_err,
     datasource::TableType,
-    logical_expr::TableProviderFilterPushDown,
+    logical_expr::{TableProviderFilterPushDown, dml::InsertOp},
     physical_plan::ExecutionPlan,
     prelude::Expr,
 };
 
 use crate::{
-    DFResult, LokiLogScanExec, TimestampBound, expr_to_label_filter, expr_to_line_filter,
-    parse_timestamp_bound,
+    DFResult, LokiLogInsertExec, LokiLogScanExec, TimestampBound, expr_to_label_filter,
+    expr_to_line_filter, parse_timestamp_bound,
 };
 
 pub static TIMESTAMP_FIELD_REF: LazyLock<FieldRef> = LazyLock::new(|| {
@@ -130,5 +130,22 @@ impl TableProvider for LokiLogTable {
             }
         }
         Ok(pushdown)
+    }
+
+    async fn insert_into(
+        &self,
+        _state: &dyn Session,
+        input: Arc<dyn ExecutionPlan>,
+        insert_op: InsertOp,
+    ) -> DFResult<Arc<dyn ExecutionPlan>> {
+        match insert_op {
+            InsertOp::Append => {}
+            InsertOp::Overwrite | InsertOp::Replace => {
+                return exec_err!("Only support append insert operation");
+            }
+        }
+
+        let exec = LokiLogInsertExec::try_new(input, self.endpoint.clone())?;
+        Ok(Arc::new(exec))
     }
 }

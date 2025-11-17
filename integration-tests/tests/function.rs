@@ -7,6 +7,7 @@ async fn test_map_get() -> Result<(), Box<dyn std::error::Error>> {
     let ctx = SessionContext::new();
     ctx.register_udf(ScalarUDF::new_from_impl(MapGet::new()));
 
+    // Get existing key
     assert_sql_output(
         &ctx,
         "select map_get(Map {'a': 1}, 'a') as value",
@@ -16,8 +17,9 @@ async fn test_map_get() -> Result<(), Box<dyn std::error::Error>> {
 | 1     |
 +-------+"#,
     )
-    .await;
+    .await?;
 
+    // Get non-existent key
     assert_sql_output(
         &ctx,
         "select map_get(Map {'a': 1}, 'b') as value",
@@ -27,7 +29,16 @@ async fn test_map_get() -> Result<(), Box<dyn std::error::Error>> {
 |       |
 +-------+"#,
     )
+    .await?;
+
+    // Duplicated keys
+    let result = assert_sql_output(
+        &ctx,
+        "select map_get(Map {'a': 1, 'a': 2}, 'b') as value",
+        r#""#,
+    )
     .await;
+    assert!(result.is_err());
 
     Ok(())
 }

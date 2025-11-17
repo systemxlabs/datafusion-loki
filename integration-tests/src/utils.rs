@@ -4,17 +4,22 @@ use datafusion::{
     prelude::SessionContext,
 };
 
-pub async fn assert_sql_output(ctx: &SessionContext, sql: &str, expected_output: &str) {
-    let df = ctx.sql(sql).await.unwrap();
-    let plan = df.create_physical_plan().await.unwrap();
+pub async fn assert_sql_output(
+    ctx: &SessionContext,
+    sql: &str,
+    expected_output: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let df = ctx.sql(sql).await?;
+    let plan = df.create_physical_plan().await?;
     println!(
         "Plan: \n{}",
         DisplayableExecutionPlan::new(plan.as_ref()).indent(true)
     );
 
-    let batches = collect(plan, ctx.task_ctx()).await.unwrap();
-    let output = pretty_format_batches(&batches).unwrap().to_string();
+    let batches = collect(plan, ctx.task_ctx()).await?;
+    let output = pretty_format_batches(&batches)?.to_string();
     println!("Output: \n{output}");
 
     assert_eq!(output, expected_output);
+    Ok(())
 }
