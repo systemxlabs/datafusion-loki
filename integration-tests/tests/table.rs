@@ -29,7 +29,7 @@ async fn full_table_scan() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn scan_with_projection() -> Result<(), Box<dyn std::error::Error>> {
     assert_loki_output(
-        "select timestamp, line from loki where map_get(labels, 'app') = 'my-app2'",
+        "select timestamp, line from loki where labels['app'] = 'my-app2'",
         r#"+-----------------+
 | line            |
 +-----------------+
@@ -48,7 +48,7 @@ async fn timestamp_filter() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn label_filter() -> Result<(), Box<dyn std::error::Error>> {
     assert_loki_output(
-        "select * from loki where map_get(labels, 'app') = 'my-app2'",
+        "select * from loki where labels['app'] = 'my-app2'",
         r#"+----------------------------------------------------------------+-----------------+
 | labels                                                         | line            |
 +----------------------------------------------------------------+-----------------+
@@ -58,7 +58,7 @@ async fn label_filter() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     assert_loki_output(
-        "select * from loki where map_get(labels, 'app') = 'not-existing'",
+        "select * from loki where labels['app'] = 'not-existing'",
         r#"++
 ++"#,
     )
@@ -93,7 +93,7 @@ async fn scan_exec_serialization() -> Result<(), Box<dyn std::error::Error>> {
 
     let ctx = build_session_context();
     let df = ctx
-        .sql("select * from loki where map_get(labels, 'app') = 'my-app2' and line like '%bbb%'")
+        .sql("select * from loki where labels['app'] = 'my-app2' and line like '%bbb%'")
         .await?;
     let exec_plan = df.create_physical_plan().await?;
     println!(

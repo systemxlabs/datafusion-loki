@@ -1,6 +1,5 @@
 mod codec;
 mod expr;
-mod function;
 mod insert;
 pub(crate) mod protobuf;
 mod scan;
@@ -9,7 +8,6 @@ mod utils;
 
 pub use codec::*;
 pub use expr::*;
-pub use function::*;
 pub use insert::*;
 pub use scan::*;
 pub use table::*;

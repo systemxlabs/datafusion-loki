@@ -1,21 +1,22 @@
 use std::sync::LazyLock;
 
 use datafusion::{
+    functions::core::getfield::GetFieldFunc,
     logical_expr::{BinaryExpr, Like, Operator, ScalarUDFImpl, expr::ScalarFunction},
     prelude::Expr,
     scalar::ScalarValue,
 };
 
-use crate::{LABELS_FIELD_REF, LINE_FIELD_REF, MapGet, TIMESTAMP_FIELD_REF};
+use crate::{LABELS_FIELD_REF, LINE_FIELD_REF, TIMESTAMP_FIELD_REF};
 
-static MAP_GET_FUNC: LazyLock<MapGet> = LazyLock::new(MapGet::new);
+static GET_FIELD_FUNC: LazyLock<GetFieldFunc> = LazyLock::new(GetFieldFunc::new);
 
 pub fn expr_to_label_filter(expr: &Expr) -> Option<String> {
     if let Expr::BinaryExpr(BinaryExpr { left, op, right }) = expr {
         let Expr::ScalarFunction(ScalarFunction { func, args }) = left.as_ref() else {
             return None;
         };
-        if func.name() != MAP_GET_FUNC.name() {
+        if func.name() != GET_FIELD_FUNC.name() {
             return None;
         }
         if args.len() != 2 {

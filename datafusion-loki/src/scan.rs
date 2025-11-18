@@ -188,12 +188,12 @@ async fn fetch_log_stream(
     let status = resp.status();
     if !status.is_success() {
         let url = resp.url().clone();
-        let text = resp.text().await;
-        println!("LWZTEST resp text: {text:?}");
-        return Err(DataFusionError::Execution(format!(
-            "Request to logi failed with status {}, url: {}",
-            status, url
-        )));
+        let with_text = if let Ok(text) = resp.text().await {
+            format!(", text: {text}")
+        } else {
+            String::new()
+        };
+        return exec_err!("Request to logi failed with status {status}, url: {url}{with_text}");
     }
     let bytes = resp.bytes().await.map_err(|e| {
         DataFusionError::Execution(format!("Failed to get response body as bytes: {e}"))

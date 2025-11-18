@@ -6,8 +6,8 @@ pub use cmd::*;
 pub use docker::*;
 pub use utils::*;
 
-use datafusion::{logical_expr::ScalarUDF, prelude::SessionContext};
-use datafusion_loki::{LokiLogTable, MapGet};
+use datafusion::prelude::SessionContext;
+use datafusion_loki::LokiLogTable;
 use std::sync::{Arc, OnceLock};
 use tokio::sync::OnceCell;
 
@@ -52,6 +52,5 @@ pub fn build_session_context() -> SessionContext {
     let ctx = SessionContext::new();
     ctx.register_table("loki", Arc::new(build_loki_table()))
         .unwrap();
-    ctx.register_udf(ScalarUDF::new_from_impl(MapGet::new()));
     ctx
 }
