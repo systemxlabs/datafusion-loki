@@ -12,7 +12,8 @@ use datafusion::{
     error::DataFusionError,
     execution::FunctionRegistry,
     physical_expr::LexOrdering,
-    physical_plan::ExecutionPlan, prelude::SessionContext,
+    physical_plan::ExecutionPlan,
+    prelude::SessionContext,
 };
 use datafusion_proto::physical_plan::{
     PhysicalExtensionCodec, from_proto::parse_physical_sort_exprs,
