@@ -12,7 +12,7 @@ use datafusion::{
     error::DataFusionError,
     execution::FunctionRegistry,
     physical_expr::LexOrdering,
-    physical_plan::ExecutionPlan,
+    physical_plan::ExecutionPlan, prelude::SessionContext,
 };
 use datafusion_proto::physical_plan::{
     PhysicalExtensionCodec, from_proto::parse_physical_sort_exprs,
@@ -30,7 +30,7 @@ impl PhysicalExtensionCodec for LokiPhysicalCodec {
         &self,
         buf: &[u8],
         inputs: &[Arc<dyn ExecutionPlan>],
-        registry: &dyn FunctionRegistry,
+        _registry: &dyn FunctionRegistry,
     ) -> DFResult<Arc<dyn ExecutionPlan>> {
         let loki_node = protobuf::LokiPhysicalPlanNode::decode(buf).map_err(|e| {
             internal_datafusion_err!("Failed to decode loki physical plan node: {e:?}")
@@ -74,7 +74,7 @@ impl PhysicalExtensionCodec for LokiPhysicalCodec {
                     .map(|sort_exprs| {
                         let sort_exprs = parse_physical_sort_exprs(
                             sort_exprs.physical_sort_expr_nodes.as_slice(),
-                            registry,
+                            &SessionContext::new(),
                             &schema,
                             self,
                         )?;
