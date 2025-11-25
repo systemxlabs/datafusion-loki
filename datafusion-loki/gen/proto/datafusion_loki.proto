@@ -9,7 +9,6 @@ message LokiPhysicalPlanNode {
   oneof LokiPhysicalPlanType {
     LokiLogScanExec scan = 1;
     LokiLogInsertExec insert = 2;
-    MemoryDatasourceNode memory_datasource = 3;
   }
 }
 
@@ -24,15 +23,6 @@ message LokiLogScanExec {
 
 message LokiLogInsertExec {
     string endpoint = 1;
-}
-
-message MemoryDatasourceNode {
-  repeated bytes partitions = 1;
-  datafusion_common.Schema schema = 2;
-  Projection projection = 3;
-  repeated datafusion.PhysicalSortExprNodeCollection sort_information = 4;  
-  bool show_sizes = 5;
-  optional uint32 fetch = 6;
 }
 
 message Projection {
