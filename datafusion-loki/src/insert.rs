@@ -3,22 +3,19 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use datafusion::{
-    arrow::{
-        array::{
-            Array, ArrayRef, Int64Array, MapArray, RecordBatch, StringArray, StructArray,
-            TimestampNanosecondArray,
-        },
-        datatypes::{DataType, Field, Schema, SchemaRef},
+use arrow::{
+    array::{
+        Array, ArrayRef, Int64Array, MapArray, RecordBatch, StringArray, StructArray,
+        TimestampNanosecondArray,
     },
-    common::{plan_err, stats::Precision},
-    error::DataFusionError,
-    execution::{SendableRecordBatchStream, TaskContext},
-    physical_expr::EquivalenceProperties,
-    physical_plan::{
-        DisplayAs, DisplayFormatType, ExecutionPlan, ExecutionPlanProperties, Partitioning,
-        PlanProperties, stream::RecordBatchStreamAdapter,
-    },
+    datatypes::{DataType, Field, Schema, SchemaRef},
+};
+use datafusion_common::{DataFusionError, plan_err, stats::Precision};
+use datafusion_execution::{SendableRecordBatchStream, TaskContext};
+use datafusion_physical_expr::EquivalenceProperties;
+use datafusion_physical_plan::{
+    DisplayAs, DisplayFormatType, ExecutionPlan, ExecutionPlanProperties, Partitioning,
+    PlanProperties, stream::RecordBatchStreamAdapter,
 };
 use futures::StreamExt;
 use reqwest::Client;

@@ -1,15 +1,10 @@
 use std::sync::{Arc, LazyLock};
 
-use datafusion::{
-    arrow::datatypes::{DataType, Field, FieldRef, Schema, SchemaRef, TimeUnit},
-    catalog::{Session, TableProvider},
-    common::exec_err,
-    datasource::TableType,
-    error::DataFusionError,
-    logical_expr::{TableProviderFilterPushDown, dml::InsertOp},
-    physical_plan::ExecutionPlan,
-    prelude::Expr,
-};
+use arrow::datatypes::{DataType, Field, FieldRef, Schema, SchemaRef, TimeUnit};
+use datafusion_catalog::{Session, TableProvider};
+use datafusion_common::{DataFusionError, exec_err};
+use datafusion_expr::{Expr, TableProviderFilterPushDown, TableType, dml::InsertOp};
+use datafusion_physical_plan::ExecutionPlan;
 
 use crate::{
     DFResult, LokiLogInsertExec, LokiLogScanExec, TimestampBound, expr_to_label_filter,

@@ -1,11 +1,8 @@
 use std::sync::LazyLock;
 
-use datafusion::{
-    functions::core::getfield::GetFieldFunc,
-    logical_expr::{BinaryExpr, Like, Operator, ScalarUDFImpl, expr::ScalarFunction},
-    prelude::Expr,
-    scalar::ScalarValue,
-};
+use datafusion_common::ScalarValue;
+use datafusion_expr::{BinaryExpr, Expr, Like, Operator, ScalarUDFImpl, expr::ScalarFunction};
+use datafusion_functions::core::getfield::GetFieldFunc;
 
 use crate::{LABELS_FIELD_REF, LINE_FIELD_REF, TIMESTAMP_FIELD_REF};
 

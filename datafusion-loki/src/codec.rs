@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
-use datafusion::{
-    common::{internal_datafusion_err, internal_err, not_impl_err},
-    execution::FunctionRegistry,
-    physical_plan::ExecutionPlan,
-};
+use datafusion_common::{internal_datafusion_err, internal_err, not_impl_err};
+use datafusion_execution::TaskContext;
+use datafusion_physical_plan::ExecutionPlan;
 use datafusion_proto::physical_plan::PhysicalExtensionCodec;
 use prost::Message;
 
@@ -18,7 +16,7 @@ impl PhysicalExtensionCodec for LokiPhysicalCodec {
         &self,
         buf: &[u8],
         inputs: &[Arc<dyn ExecutionPlan>],
-        _registry: &dyn FunctionRegistry,
+        _context: &TaskContext,
     ) -> DFResult<Arc<dyn ExecutionPlan>> {
         let loki_node = protobuf::LokiPhysicalPlanNode::decode(buf).map_err(|e| {
             internal_datafusion_err!("Failed to decode loki physical plan node: {e:?}")

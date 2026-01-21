@@ -11,14 +11,26 @@ readme = "../README.md"
 
 [dependencies]
 async-trait = "0.1"
-datafusion = { workspace = true }
+# DataFusion 子 crate
+datafusion-catalog = { workspace = true }
+datafusion-common = { workspace = true }
+datafusion-datasource = { workspace = true }
+datafusion-execution = { workspace = true }
+datafusion-expr = { workspace = true }
+datafusion-functions = { workspace = true }
+datafusion-physical-expr = { workspace = true }
+datafusion-physical-plan = { workspace = true }
 datafusion-proto = { workspace = true }
+# Arrow 生态
+arrow = { workspace = true }
+parquet = { workspace = true, features = ["async"] }
+
 futures = "0.3"
 log = "0.4"
-parquet = { version = "56", features = ["async"] }
 prost = { workspace = true }
 reqwest = { version = "0.12", features = ["stream", "json"] }
 serde = "1"
 
 [dev-dependencies]
+datafusion = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
