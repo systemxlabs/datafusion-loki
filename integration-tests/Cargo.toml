@@ -4,10 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# 使用完整的 datafusion 以获取 SessionContext
 datafusion = { workspace = true }
 datafusion-loki = { path = "../datafusion-loki" }
 datafusion-proto = { workspace = true }
-# Arrow 生态
 arrow = { workspace = true }
 tokio = { workspace = true }
