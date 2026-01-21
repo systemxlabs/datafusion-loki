@@ -3,7 +3,6 @@ members = ["datafusion-loki", "datafusion-loki/gen", "integration-tests"]
 resolver = "3"
 
 [workspace.dependencies]
-# DataFusion 子 crate
 datafusion = "51"
 datafusion-catalog = "51"
 datafusion-common = "51"
@@ -15,7 +14,6 @@ datafusion-physical-expr = "51"
 datafusion-physical-plan = "51"
 datafusion-proto = "51"
 
-# Arrow 生态 (与 datafusion 51 兼容)
 arrow = "57"
 parquet = "57"
 

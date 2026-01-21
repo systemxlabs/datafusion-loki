@@ -11,7 +11,6 @@ readme = "../README.md"
 
 [dependencies]
 async-trait = "0.1"
-# DataFusion 子 crate
 datafusion-catalog = { workspace = true }
 datafusion-common = { workspace = true }
 datafusion-datasource = { workspace = true }
@@ -21,7 +20,6 @@ datafusion-functions = { workspace = true }
 datafusion-physical-expr = { workspace = true }
 datafusion-physical-plan = { workspace = true }
 datafusion-proto = { workspace = true }
-# Arrow 生态
 arrow = { workspace = true }
 parquet = { workspace = true, features = ["async"] }
 
