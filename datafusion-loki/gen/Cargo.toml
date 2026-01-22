@@ -3,6 +3,7 @@ name = "datafusion-loki-gen"
 description = "Code generation for proto"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 prost-build = { workspace = true }
