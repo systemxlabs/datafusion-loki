@@ -13,4 +13,4 @@ pub use scan::*;
 pub use table::*;
 pub use utils::*;
 
-pub type DFResult<T> = Result<T, datafusion::error::DataFusionError>;
+pub type DFResult<T> = Result<T, datafusion_common::DataFusionError>;

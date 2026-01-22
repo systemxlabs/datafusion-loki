@@ -112,7 +112,7 @@ async fn scan_exec_serialization() -> Result<(), Box<dyn std::error::Error>> {
     plan_proto.try_encode(&mut plan_buf)?;
 
     let new_plan: Arc<dyn ExecutionPlan> = PhysicalPlanNode::try_decode(&plan_buf)
-        .and_then(|proto| proto.try_into_physical_plan(&ctx, &ctx.runtime_env(), &codec))?;
+        .and_then(|proto| proto.try_into_physical_plan(&ctx.task_ctx(), &codec))?;
     println!(
         "Deserialized plan: {}",
         DisplayableExecutionPlan::new(new_plan.as_ref()).indent(true)
@@ -150,7 +150,7 @@ async fn insert_exec_serialization() -> Result<(), Box<dyn std::error::Error>> {
     plan_proto.try_encode(&mut plan_buf)?;
 
     let new_plan: Arc<dyn ExecutionPlan> = PhysicalPlanNode::try_decode(&plan_buf)
-        .and_then(|proto| proto.try_into_physical_plan(&ctx, &ctx.runtime_env(), &codec))?;
+        .and_then(|proto| proto.try_into_physical_plan(&ctx.task_ctx(), &codec))?;
     let serde_plan_str = DisplayableExecutionPlan::new(new_plan.as_ref())
         .indent(true)
         .to_string();

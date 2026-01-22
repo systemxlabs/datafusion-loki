@@ -1,17 +1,14 @@
 use std::{any::Any, io::Cursor, pin::Pin, sync::Arc};
 
-use datafusion::{
-    arrow::array::RecordBatch,
-    common::{exec_err, project_schema},
-    error::DataFusionError,
-    execution::{SendableRecordBatchStream, TaskContext},
-    physical_expr::EquivalenceProperties,
-    physical_plan::{
-        DisplayAs, DisplayFormatType, ExecutionPlan, Partitioning, PlanProperties,
-        display::ProjectSchemaDisplay,
-        execution_plan::{Boundedness, EmissionType},
-        stream::RecordBatchStreamAdapter,
-    },
+use arrow::array::RecordBatch;
+use datafusion_common::{DataFusionError, exec_err, project_schema};
+use datafusion_execution::{SendableRecordBatchStream, TaskContext};
+use datafusion_physical_expr::EquivalenceProperties;
+use datafusion_physical_plan::{
+    DisplayAs, DisplayFormatType, ExecutionPlan, Partitioning, PlanProperties,
+    display::ProjectSchemaDisplay,
+    execution_plan::{Boundedness, EmissionType},
+    stream::RecordBatchStreamAdapter,
 };
 use futures::{Stream, StreamExt, TryStreamExt};
 use log::debug;
