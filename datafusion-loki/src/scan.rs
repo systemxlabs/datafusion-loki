@@ -28,7 +28,7 @@ pub struct LokiLogScanExec {
     pub projection: Option<Vec<usize>>,
     pub limit: Option<usize>,
     client: Client,
-    plan_properties: PlanProperties,
+    plan_properties: Arc<PlanProperties>,
 }
 
 impl LokiLogScanExec {
@@ -58,7 +58,7 @@ impl LokiLogScanExec {
             projection,
             limit,
             client,
-            plan_properties,
+            plan_properties: Arc::new(plan_properties),
         })
     }
 }
@@ -72,7 +72,7 @@ impl ExecutionPlan for LokiLogScanExec {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.plan_properties
     }
 
