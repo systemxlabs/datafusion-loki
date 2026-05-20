@@ -36,7 +36,7 @@ pub struct LokiLogInsertExec {
     pub input: Arc<dyn ExecutionPlan>,
     pub endpoint: String,
     client: Client,
-    plan_properties: PlanProperties,
+    plan_properties: Arc<PlanProperties>,
 }
 
 impl LokiLogInsertExec {
@@ -60,7 +60,7 @@ impl LokiLogInsertExec {
             input,
             endpoint,
             client,
-            plan_properties,
+            plan_properties: Arc::new(plan_properties),
         })
     }
 }
@@ -74,7 +74,7 @@ impl ExecutionPlan for LokiLogInsertExec {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.plan_properties
     }
 
