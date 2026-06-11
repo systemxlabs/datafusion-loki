@@ -167,8 +167,8 @@ async fn insert_exec_serialization() -> Result<(), Box<dyn std::error::Error>> {
 /// may use offset-based timezone ("+00:00") while parquet reader outputs
 /// named timezone ("UTC") — both are semantically equivalent UTC.
 #[tokio::test]
-async fn test_scan_output_schema_compatible_with_log_table_schema(
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn test_scan_output_schema_compatible_with_log_table_schema()
+-> Result<(), Box<dyn std::error::Error>> {
     use arrow::datatypes::DataType;
 
     setup_loki().await;
@@ -186,7 +186,8 @@ async fn test_scan_output_schema_compatible_with_log_table_schema(
                 match (fa.data_type(), fb.data_type()) {
                     (DataType::Struct(sa), DataType::Struct(sb)) => {
                         sa.len() == sb.len()
-                            && sa.iter()
+                            && sa
+                                .iter()
                                 .zip(sb.iter())
                                 .all(|(fa, fb)| types_compatible(fa.data_type(), fb.data_type()))
                     }
@@ -212,11 +213,7 @@ async fn test_scan_output_schema_compatible_with_log_table_schema(
             "Batch {i}: column count mismatch"
         );
         for (j, (bf, df)) in bs.fields().iter().zip(declared.fields().iter()).enumerate() {
-            assert_eq!(
-                bf.name(),
-                df.name(),
-                "Batch {i} col {j}: name mismatch"
-            );
+            assert_eq!(bf.name(), df.name(), "Batch {i} col {j}: name mismatch");
             assert!(
                 types_compatible(bf.data_type(), df.data_type()),
                 "Batch {i} col {j} ({name}): type mismatch — output: {output:?}, declared: {declared:?}",
