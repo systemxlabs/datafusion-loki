@@ -14,7 +14,7 @@ use crate::{
 pub static TIMESTAMP_FIELD_REF: LazyLock<FieldRef> = LazyLock::new(|| {
     Arc::new(Field::new(
         "timestamp",
-        DataType::Timestamp(TimeUnit::Nanosecond, Some("+00:00".into())),
+        DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into())),
         false,
     ))
 });

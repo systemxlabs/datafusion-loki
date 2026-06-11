@@ -161,43 +161,15 @@ async fn insert_exec_serialization() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Verify that scan exec output schema is compatible with LOG_TABLE_SCHEMA.
-/// Checks column count, names, and data type categories.
-/// NOTE: does not check exact DataType equality because the declared schema
-/// may use offset-based timezone ("+00:00") while parquet reader outputs
-/// named timezone ("UTC") — both are semantically equivalent UTC.
+/// Verify that scan exec output RecordBatch schema exactly matches LOG_TABLE_SCHEMA.
+/// This is a regression guard for Arrow/DataFusion upgrade compatibility issues.
 #[tokio::test]
-async fn test_scan_output_schema_compatible_with_log_table_schema()
--> Result<(), Box<dyn std::error::Error>> {
-    use arrow::datatypes::DataType;
-
+async fn test_scan_output_schema_matches_log_table_schema() -> Result<(), Box<dyn std::error::Error>>
+{
     setup_loki().await;
 
     let ctx = build_session_context();
     let declared = datafusion_loki::LOG_TABLE_SCHEMA.clone();
-
-    // Helper: check two DataTypes are semantically compatible
-    fn types_compatible(a: &DataType, b: &DataType) -> bool {
-        match (a, b) {
-            // Timestamps: ignore timezone string (both "UTC" and "+00:00" are UTC)
-            (DataType::Timestamp(ua, _), DataType::Timestamp(ub, _)) => ua == ub,
-            // Map: check inner struct types structurally
-            (DataType::Map(fa, _), DataType::Map(fb, _)) => {
-                match (fa.data_type(), fb.data_type()) {
-                    (DataType::Struct(sa), DataType::Struct(sb)) => {
-                        sa.len() == sb.len()
-                            && sa
-                                .iter()
-                                .zip(sb.iter())
-                                .all(|(fa, fb)| types_compatible(fa.data_type(), fb.data_type()))
-                    }
-                    _ => false,
-                }
-            }
-            // For everything else, exact match
-            _ => a == b,
-        }
-    }
 
     // Full scan
     let df = ctx.sql("select * from loki").await?;
@@ -206,22 +178,14 @@ async fn test_scan_output_schema_compatible_with_log_table_schema()
     assert!(!batches.is_empty(), "Must have at least one RecordBatch");
 
     for (i, batch) in batches.iter().enumerate() {
-        let bs = batch.schema();
         assert_eq!(
-            bs.fields().len(),
-            declared.fields().len(),
-            "Batch {i}: column count mismatch"
+            batch.schema().as_ref(),
+            declared.as_ref(),
+            "Batch {i}: output schema must match LOG_TABLE_SCHEMA exactly\n\
+             expected: {declared:?}\n\
+             actual:   {:?}",
+            batch.schema()
         );
-        for (j, (bf, df)) in bs.fields().iter().zip(declared.fields().iter()).enumerate() {
-            assert_eq!(bf.name(), df.name(), "Batch {i} col {j}: name mismatch");
-            assert!(
-                types_compatible(bf.data_type(), df.data_type()),
-                "Batch {i} col {j} ({name}): type mismatch — output: {output:?}, declared: {declared:?}",
-                name = bf.name(),
-                output = bf.data_type(),
-                declared = df.data_type()
-            );
-        }
     }
 
     // Filtered query
@@ -232,15 +196,11 @@ async fn test_scan_output_schema_compatible_with_log_table_schema()
     let batches = collect(exec_plan.clone(), ctx.task_ctx()).await?;
 
     for (i, batch) in batches.iter().enumerate() {
-        let bs = batch.schema();
-        assert_eq!(bs.fields().len(), declared.fields().len());
-        for (j, (bf, df)) in bs.fields().iter().zip(declared.fields().iter()).enumerate() {
-            assert_eq!(bf.name(), df.name());
-            assert!(
-                types_compatible(bf.data_type(), df.data_type()),
-                "Filtered batch {i} col {j}: type mismatch"
-            );
-        }
+        assert_eq!(
+            batch.schema().as_ref(),
+            declared.as_ref(),
+            "Filtered batch {i}: output schema must match LOG_TABLE_SCHEMA exactly"
+        );
     }
 
     Ok(())
