@@ -160,3 +160,92 @@ async fn insert_exec_serialization() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+/// Verify that scan exec output RecordBatch schema matches LOG_TABLE_SCHEMA.
+/// This is a regression guard for Arrow/DataFusion upgrade compatibility issues
+/// (e.g., schema mismatch between Loki's Parquet response and declared table schema).
+#[tokio::test]
+async fn test_scan_output_schema_matches_log_table_schema() -> Result<(), Box<dyn std::error::Error>>
+{
+    setup_loki().await;
+
+    let ctx = build_session_context();
+
+    // Run a full scan query
+    let df = ctx.sql("select * from loki").await?;
+    let exec_plan = df.create_physical_plan().await?;
+    let batches = collect(exec_plan.clone(), ctx.task_ctx()).await?;
+
+    assert!(!batches.is_empty(), "Must have at least one RecordBatch");
+
+    let declared_schema = datafusion_loki::LOG_TABLE_SCHEMA.clone();
+    for (i, batch) in batches.iter().enumerate() {
+        assert_eq!(
+            batch.schema().as_ref(),
+            declared_schema.as_ref(),
+            "Batch {i}: output schema must match LOG_TABLE_SCHEMA\n\
+             Expected: {declared_schema:?}\n\
+             Actual:   {:?}",
+            batch.schema()
+        );
+    }
+
+    // Also verify that the schema works with filtered queries
+    let df = ctx
+        .sql("select * from loki where labels['app'] = 'my-app2'")
+        .await?;
+    let exec_plan = df.create_physical_plan().await?;
+    let batches = collect(exec_plan.clone(), ctx.task_ctx()).await?;
+
+    for (i, batch) in batches.iter().enumerate() {
+        assert_eq!(
+            batch.schema().as_ref(),
+            declared_schema.as_ref(),
+            "Filtered query batch {i}: output schema must match LOG_TABLE_SCHEMA\n\
+             Expected: {declared_schema:?}\n\
+             Actual:   {:?}",
+            batch.schema()
+        );
+    }
+
+    Ok(())
+}
+
+/// Verify that scan with projection (selecting specific columns) produces
+/// a schema compatible with LOG_TABLE_SCHEMA projection.
+#[tokio::test]
+async fn test_scan_projection_schema_consistency() -> Result<(), Box<dyn std::error::Error>> {
+    setup_loki().await;
+
+    let ctx = build_session_context();
+    let declared = datafusion_loki::LOG_TABLE_SCHEMA.clone();
+
+    // Test single column projection
+    let df = ctx.sql("select timestamp from loki").await?;
+    let exec_plan = df.create_physical_plan().await?;
+    let batches = collect(exec_plan.clone(), ctx.task_ctx()).await?;
+    assert!(!batches.is_empty());
+    for batch in &batches {
+        assert_eq!(batch.num_columns(), 1);
+        assert_eq!(
+            batch.schema().field(0).data_type(),
+            declared.field(0).data_type(),
+            "Projected timestamp type must match declared schema"
+        );
+    }
+
+    // Test labels column
+    let df = ctx.sql("select labels from loki").await?;
+    let exec_plan = df.create_physical_plan().await?;
+    let batches = collect(exec_plan.clone(), ctx.task_ctx()).await?;
+    for batch in &batches {
+        assert_eq!(batch.num_columns(), 1);
+        assert_eq!(
+            batch.schema().field(0).data_type(),
+            declared.field(1).data_type(),
+            "Projected labels type must match declared schema"
+        );
+    }
+
+    Ok(())
+}
