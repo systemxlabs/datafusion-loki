@@ -20,7 +20,7 @@ datafusion-functions = { workspace = true }
 datafusion-physical-expr = { workspace = true }
 datafusion-physical-plan = { workspace = true }
 datafusion-proto = { workspace = true }
-arrow = { workspace = true }
+arrow = { workspace = true, features = ["chrono-tz"] }
 parquet = { workspace = true, features = ["async"] }
 
 futures = "0.3"
