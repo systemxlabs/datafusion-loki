@@ -42,6 +42,17 @@ async fn scan_with_projection() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::test]
 async fn timestamp_filter() -> Result<(), Box<dyn std::error::Error>> {
+    // Data was just inserted by setup, so now() - 1h catches all rows
+    assert_loki_output(
+        "select * from loki where timestamp > now() - interval '1 hour'",
+        r#"+----------------------------------------------------------------+-----------------+
+| labels                                                         | line            |
++----------------------------------------------------------------+-----------------+
+| {app: my-app1, detected_level: unknown, service_name: my-app1} | this is aaa log |
+| {app: my-app2, detected_level: unknown, service_name: my-app2} | this is bbb log |
++----------------------------------------------------------------+-----------------+"#,
+    )
+    .await?;
     Ok(())
 }
 
@@ -157,6 +168,51 @@ async fn insert_exec_serialization() -> Result<(), Box<dyn std::error::Error>> {
     println!("Deserialized plan: \n{serde_plan_str}",);
 
     assert_eq!(plan_str, serde_plan_str);
+
+    Ok(())
+}
+
+/// Verify that scan exec output RecordBatch schema exactly matches LOG_TABLE_SCHEMA.
+/// This is a regression guard for Arrow/DataFusion upgrade compatibility issues.
+#[tokio::test]
+async fn test_scan_output_schema_matches_log_table_schema() -> Result<(), Box<dyn std::error::Error>>
+{
+    setup_loki().await;
+
+    let ctx = build_session_context();
+    let declared = datafusion_loki::LOG_TABLE_SCHEMA.clone();
+
+    // Full scan
+    let df = ctx.sql("select * from loki").await?;
+    let exec_plan = df.create_physical_plan().await?;
+    let batches = collect(exec_plan.clone(), ctx.task_ctx()).await?;
+    assert!(!batches.is_empty(), "Must have at least one RecordBatch");
+
+    for (_i, batch) in batches.iter().enumerate() {
+        assert_eq!(
+            batch.schema().as_ref(),
+            declared.as_ref(),
+            "Batch {_i}: output schema must match LOG_TABLE_SCHEMA exactly\n\
+             expected: {declared:?}\n\
+             actual:   {:?}",
+            batch.schema()
+        );
+    }
+
+    // Filtered query
+    let df = ctx
+        .sql("select * from loki where labels['app'] = 'my-app2'")
+        .await?;
+    let exec_plan = df.create_physical_plan().await?;
+    let batches = collect(exec_plan.clone(), ctx.task_ctx()).await?;
+
+    for (_i, batch) in batches.iter().enumerate() {
+        assert_eq!(
+            batch.schema().as_ref(),
+            declared.as_ref(),
+            "Filtered batch {_i}: output schema must match LOG_TABLE_SCHEMA exactly"
+        );
+    }
 
     Ok(())
 }
