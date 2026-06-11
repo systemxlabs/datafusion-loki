@@ -23,10 +23,10 @@ pub static LABELS_FIELD_REF: LazyLock<FieldRef> = LazyLock::new(|| {
     let value_field = Field::new("value", DataType::Utf8, false);
     let entry_struct = DataType::Struct(vec![key_field, value_field].into());
     let map_field = Arc::new(Field::new("key_value", entry_struct, false));
-    Arc::new(Field::new("labels", DataType::Map(map_field, false), true))
+    Arc::new(Field::new("labels", DataType::Map(map_field, false), false))
 });
 pub static LINE_FIELD_REF: LazyLock<FieldRef> =
-    LazyLock::new(|| Arc::new(Field::new("line", DataType::Utf8, true)));
+    LazyLock::new(|| Arc::new(Field::new("line", DataType::Utf8, false)));
 
 pub static LOG_TABLE_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     Arc::new(Schema::new(vec![
