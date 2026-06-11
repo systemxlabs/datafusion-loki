@@ -14,15 +14,15 @@ use crate::{
 pub static TIMESTAMP_FIELD_REF: LazyLock<FieldRef> = LazyLock::new(|| {
     Arc::new(Field::new(
         "timestamp",
-        DataType::Timestamp(TimeUnit::Nanosecond, None),
+        DataType::Timestamp(TimeUnit::Nanosecond, Some("+00:00".into())),
         false,
     ))
 });
 pub static LABELS_FIELD_REF: LazyLock<FieldRef> = LazyLock::new(|| {
-    let key_field = Field::new("keys", DataType::Utf8, false);
-    let value_field = Field::new("values", DataType::Utf8, true); // 值允许为空
+    let key_field = Field::new("key", DataType::Utf8, false);
+    let value_field = Field::new("value", DataType::Utf8, false);
     let entry_struct = DataType::Struct(vec![key_field, value_field].into());
-    let map_field = Arc::new(Field::new("entries", entry_struct, false));
+    let map_field = Arc::new(Field::new("key_value", entry_struct, false));
     Arc::new(Field::new("labels", DataType::Map(map_field, false), true))
 });
 pub static LINE_FIELD_REF: LazyLock<FieldRef> =
