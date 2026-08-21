@@ -75,10 +75,6 @@ impl LokiLogTable {
 
 #[async_trait::async_trait]
 impl TableProvider for LokiLogTable {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
     fn schema(&self) -> SchemaRef {
         LOG_TABLE_SCHEMA.clone()
     }

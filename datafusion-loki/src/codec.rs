@@ -3,7 +3,7 @@ use std::sync::Arc;
 use datafusion_common::{internal_datafusion_err, internal_err, not_impl_err};
 use datafusion_execution::TaskContext;
 use datafusion_physical_plan::ExecutionPlan;
-use datafusion_proto::physical_plan::PhysicalExtensionCodec;
+use datafusion_proto::physical_plan::{PhysicalExtensionCodec, PhysicalProtoConverterExtension};
 use prost::Message;
 
 use crate::{DFResult, LokiLogInsertExec, LokiLogScanExec, protobuf};
@@ -17,6 +17,7 @@ impl PhysicalExtensionCodec for LokiPhysicalCodec {
         buf: &[u8],
         inputs: &[Arc<dyn ExecutionPlan>],
         _context: &TaskContext,
+        _proto_converter: &dyn PhysicalProtoConverterExtension,
     ) -> DFResult<Arc<dyn ExecutionPlan>> {
         let loki_node = protobuf::LokiPhysicalPlanNode::decode(buf).map_err(|e| {
             internal_datafusion_err!("Failed to decode loki physical plan node: {e:?}")
@@ -52,8 +53,13 @@ impl PhysicalExtensionCodec for LokiPhysicalCodec {
         }
     }
 
-    fn try_encode(&self, node: Arc<dyn ExecutionPlan>, buf: &mut Vec<u8>) -> DFResult<()> {
-        if let Some(exec) = node.as_any().downcast_ref::<LokiLogScanExec>() {
+    fn try_encode(
+        &self,
+        node: Arc<dyn ExecutionPlan>,
+        buf: &mut Vec<u8>,
+        _proto_converter: &dyn PhysicalProtoConverterExtension,
+    ) -> DFResult<()> {
+        if let Some(exec) = node.downcast_ref::<LokiLogScanExec>() {
             let projection = serialize_projection(exec.projection.as_ref());
 
             let proto = protobuf::LokiPhysicalPlanNode {
@@ -75,7 +81,7 @@ impl PhysicalExtensionCodec for LokiPhysicalCodec {
                 internal_datafusion_err!("Failed to encode loki log scan exec plan: {e:?}")
             })?;
             Ok(())
-        } else if let Some(exec) = node.as_any().downcast_ref::<LokiLogInsertExec>() {
+        } else if let Some(exec) = node.downcast_ref::<LokiLogInsertExec>() {
             let proto = protobuf::LokiPhysicalPlanNode {
                 loki_physical_plan_type: Some(
                     protobuf::loki_physical_plan_node::LokiPhysicalPlanType::Insert(
