@@ -1,9 +1,9 @@
-use std::{any::Any, io::Cursor, pin::Pin, sync::Arc};
+use std::{io::Cursor, pin::Pin, sync::Arc};
 
 use arrow::array::RecordBatch;
-use datafusion_common::{DataFusionError, exec_err, project_schema};
+use datafusion_common::{DataFusionError, exec_err, project_schema, tree_node::TreeNodeRecursion};
 use datafusion_execution::{SendableRecordBatchStream, TaskContext};
-use datafusion_physical_expr::EquivalenceProperties;
+use datafusion_physical_expr::{EquivalenceProperties, PhysicalExpr};
 use datafusion_physical_plan::{
     DisplayAs, DisplayFormatType, ExecutionPlan, Partitioning, PlanProperties,
     display::ProjectSchemaDisplay,
@@ -66,10 +66,6 @@ impl LokiLogScanExec {
 impl ExecutionPlan for LokiLogScanExec {
     fn name(&self) -> &str {
         "LokiLogScanExec"
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 
     fn properties(&self) -> &Arc<PlanProperties> {
@@ -143,6 +139,13 @@ impl ExecutionPlan for LokiLogScanExec {
 
     fn fetch(&self) -> Option<usize> {
         self.limit
+    }
+
+    fn apply_expressions(
+        &self,
+        _f: &mut dyn FnMut(&Arc<dyn PhysicalExpr>) -> DFResult<TreeNodeRecursion>,
+    ) -> DFResult<TreeNodeRecursion> {
+        Ok(TreeNodeRecursion::Continue)
     }
 }
 

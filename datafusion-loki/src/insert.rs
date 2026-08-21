@@ -10,12 +10,14 @@ use arrow::{
     },
     datatypes::{DataType, Field, Schema, SchemaRef},
 };
-use datafusion_common::{DataFusionError, plan_err, stats::Precision};
+use datafusion_common::{
+    DataFusionError, plan_err, stats::Precision, tree_node::TreeNodeRecursion,
+};
 use datafusion_execution::{SendableRecordBatchStream, TaskContext};
-use datafusion_physical_expr::EquivalenceProperties;
+use datafusion_physical_expr::{EquivalenceProperties, PhysicalExpr};
 use datafusion_physical_plan::{
     DisplayAs, DisplayFormatType, ExecutionPlan, ExecutionPlanProperties, Partitioning,
-    PlanProperties, stream::RecordBatchStreamAdapter,
+    PlanProperties, StatisticsArgs, StatisticsContext, stream::RecordBatchStreamAdapter,
 };
 use futures::StreamExt;
 use reqwest::Client;
@@ -70,10 +72,6 @@ impl ExecutionPlan for LokiLogInsertExec {
         "LokiLogInsertExec"
     }
 
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
     fn properties(&self) -> &Arc<PlanProperties> {
         &self.plan_properties
     }
@@ -117,12 +115,21 @@ impl ExecutionPlan for LokiLogInsertExec {
             stream,
         )))
     }
+
+    fn apply_expressions(
+        &self,
+        _f: &mut dyn FnMut(&Arc<dyn PhysicalExpr>) -> DFResult<TreeNodeRecursion>,
+    ) -> DFResult<TreeNodeRecursion> {
+        Ok(TreeNodeRecursion::Continue)
+    }
 }
 
 impl DisplayAs for LokiLogInsertExec {
     fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "LokiLogInsertExec: endpoint={}", self.endpoint)?;
-        if let Ok(stats) = self.input.partition_statistics(None) {
+        if let Ok(stats) =
+            StatisticsContext::new().compute(self.input.as_ref(), &StatisticsArgs::new())
+        {
             match stats.num_rows {
                 Precision::Exact(rows) => write!(f, ", rows={rows}")?,
                 Precision::Inexact(rows) => write!(f, ", rows≈{rows}")?,
